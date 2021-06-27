@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+	<bean class="org.springframework.jdbc.datasource.DriverManagerDataSource" id="dataSource">
+		<property name="username" value="trip"></property>
+		<property name="password" value="01234567"></property>
+		<property name="url" value="jdbc:mariadb://220.70.33.29:3306/trip"></property>
+		<property name="driverClassName" value="org.mariadb.jdbc.Driver"></property>
+	</bean>
+	
+	<!-- sqlSessionFactory -->
+	<bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"></property>
+		<property name="mapperLocations" value="classpath:/com/wc/pb/*Mapper/*Mapper.xml"></property>
+		<property name="configLocation" value="classpath:/com/wc/pb/myBatis/config/myBatisConfig.xml"></property>
+	</bean>
+	
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+		<constructor-arg name="sqlSessionFactory" ref="sqlSessionFactoryBean"/>		
+	</bean>
+			<!-- Mail 관련 인스턴스 등록 -->
+	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+		<property name="host" value="smtp.gmail.com" />
+		<property name="port" value="587" />
+		<property name="username" value="workingcowowner@gmail.com" />
+		<property name="password" value="ozwapvqvlvvtznkk" />
+		<!-- property name="password" 2단계 인증 비밀번호 -->
+		
+		<!-- email 요청시는 SMTP -->
+		<property name="javaMailProperties">
+			<props>
+				<prop key="mail.transport.protocol">smtp</prop>
+				<prop key="mail.smtp.auth">true</prop>
+				<prop key="mail.smtp.starttls.enable">true</prop>
+				<prop key="mail.debug">false</prop>
+			</props>
+		</property>
+	</bean>
+
+</beans>

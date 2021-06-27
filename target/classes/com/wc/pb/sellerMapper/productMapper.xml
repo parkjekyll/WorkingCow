@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="product">
+	<!-- 상품등록 -->
+   <insert id="addItem" parameterType="map">
+      INSERT INTO wc_product
+      (
+      seller_no,
+      mainCate_no,
+      subCate_no,
+      product_title,
+      product_operationDate,
+      product_price,
+      product_skill,
+      product_addDate
+      )
+      VALUES
+      (
+      #{seller_no},
+      #{mainCate_no},
+      #{subCate_no},
+      #{product_title},
+      #{product_operationDate},
+      #{product_price},
+      #{product_skill},
+      now()
+      )
+      
+   </insert>
+	
+	<select id="productWrite_detail" parameterType="Integer" resultType="Integer">
+      SELECT product_no from wc_product
+      ORDER BY product_no DESC
+      LIMIT 1
+   </select>
+	
+	<insert id="productWrite_img" parameterType="Map">
+       INSERT INTO wc_productImg(product_no, productOriFile_name, productImg_name, productImg_location) 
+       VALUES (#{nboard_no},#{nboard_oriFileName},#{nboard_imgName},#{nboard_location})
+   </insert>
+	
+	<select parameterType="ProductVO" id="productList" resultType="ProductVO">
+       SELECT product_no, product_title, product_price, seller_no 
+       FROM wc_product
+       ORDER BY product_no DESC
+       LIMIT #{page}, 6
+	</select>
+	
+	<select parameterType="ProductImgVO" id="productimgList" resultType="ProductImgVO">
+       SELECT *
+       FROM wc_productImg
+	</select>
+	
+   <select parameterType="Integer" id="totalCount" resultType="Integer">
+       SELECT COUNT(*) as count FROM wc_product WHERE seller_no = #{seller_no}
+   </select>
+   
+   <select parameterType="ProductVO" id="productDetail" resultType="ProductVO">
+       SELECT p.product_no, p.product_title, p.product_price, s.seller_location, s.seller_major, s.customer_no,
+      p.product_operationDate,p .product_skill, p.mainCate_no, p.subCate_no,
+		 (SELECT mainCate_name FROM wc_mainCategory m WHERE m.mainCate_no = p.mainCate_no) AS 'mainCate_name' ,
+		 (SELECT subCate_name FROM wc_subCategory s WHERE s.subCate_no = p.subCate_no) AS 'subCate_name' ,
+	   (SELECT ROUND(AVG(r.review_rating),1) FROM wc_review r WHERE p.product_no = r.product_no) AS 'rating'
+	   FROM wc_product p JOIN wc_seller s ON p.seller_no = s.seller_no
+	   WHERE p.product_no =#{bno}
+   </select>
+   
+   <select parameterType="ProductImgVO" id="productDetail_img" resultType="ProductImgVO">
+	   SELECT productImg_name
+	   FROM wc_productImg
+	   WHERE product_no = #{product_no}
+   </select>
+
+	<select parameterType="String" id="cumtomer_nick" resultType="String">
+	   SELECT customer_nick
+	   FROM wc_customer
+	   WHERE customer_no = ${customer_no}
+	</select>
+	<select parameterType="SellerVO" id="sellerDetail" resultType="SellerVO">
+	   SELECT *
+	   FROM wc_seller
+	   WHERE customer_no = ${customer_no}
+	</select>
+
+	<delete id="productDelete_img">
+	   DELETE FROM wc_productImg WHERE product_no = #{bno}
+	</delete>
+	
+	<delete id="productDelete">
+	   DELETE FROM wc_product WHERE product_no = #{bno}
+	</delete>
+	<!-- 여기부터 시작 -->
+   <select parameterType="Map" id="boardList" resultType="ProductVO">
+       SELECT p.product_no, p.product_title, p.product_price, p.seller_no , p.product_soldCount,p.product_readCount,p.product_likeCount, p.product_operationDate
+       , (SELECT COUNT(*) FROM wc_review r WHERE p.product_no = r.product_no) AS 'reviewCount'
+       , (SELECT ROUND(AVG(r.review_rating),1) FROM wc_review r WHERE p.product_no = r.product_no) AS 'rating'
+       FROM wc_product  p JOIN wc_seller s ON p.seller_no = s.seller_no
+       <if test="mainCate_no != null and mainCate_no != ''">WHERE mainCate_no = #{mainCate_no}</if> 
+       <if test="mainCate_no != null and subCate_no != null and subCate_no != ''">AND subCate_no = #{subCate_no}</if>
+       ORDER BY 
+       <choose>
+          <when test="type == 'sold' or type == 'soldRanking'">product_soldCount</when>
+          <when test="type == 'rating'">rating</when>
+          <when test="type == 'review'">reviewCount</when>
+          <when test="type == 'read'">product_readCount</when>
+          <when test="type == 'like'">product_likeCount</when>
+          <otherwise>product_no</otherwise>
+       </choose>
+       DESC
+       <choose>
+          <when test="type == 'soldRanking'">LIMIT 6</when>
+          <otherwise>LIMIT #{page}, 8</otherwise>
+       </choose>
+   </select>
+	<select id="customerImg" parameterType="Map"  resultType="Map">
+		SELECT s.seller_no, c.customer_imgName, customer_imgLocation,
+		(SELECT c.customer_nick FROM wc_customer c WHERE c.customer_no = s.customer_no) AS 'customer_nick'
+		FROM wc_customer_img c JOIN wc_seller s ON c.customer_no = s.customer_no
+	</select>
+	<select id="subCateList" parameterType="Integer" resultType="SubCategoryVO">
+		SELECT *
+		FROM wc_subCategory
+		WHERE mainCate_no = ${cate}
+	</select>
+	<select id="mainCateName" parameterType="Integer" resultType="String">
+		SELECT mainCate_name
+		FROM wc_mainCategory
+		WHERE mainCate_no = ${cate}
+	</select>
+	<select id="subCateAllList" resultType="SubCategoryVO">
+		SELECT subCate_no,mainCate_no,subCate_name
+		FROM wc_subCategory
+	</select>
+	
+	<select id="CatetotalCount" parameterType="Map" resultType="Integer">
+		SELECT COUNT(*) FROM wc_product 
+		<if test="mainCate_no != null and mainCate_no != ''">WHERE mainCate_no = #{mainCate_no}</if> 
+        <if test="mainCate_no != null and subCate_no != null and subCate_no != ''">AND subCate_no = #{subCate_no}</if>
+	</select>
+	<!-- 여기서부터 -->
+	<update id="customerDetail_readCount" parameterType="Integer">
+		UPDATE wc_product SET product_readCount = product_readCount+1 WHERE product_no = #{product_no}
+	</update>
+	<update id="noticeDetail_readCount" parameterType="Integer">
+		UPDATE wc_notice_board SET nboard_readCount = nboard_readCount+1 WHERE nboard_no = #{bno}
+	</update>
+	<!-- 이미지 인설트 위한 pno얻기 -->
+   <select id="getProductNo" parameterType="Integer" resultType="Integer">
+      select product_no from wc_product order by product_no DESC limit 1
+   </select>
+   <!-- 상품 이미지 인설트-->
+   <insert id="addItemImg" parameterType="Map">
+      insert into wc_productImg(product_no, productOriFile_name, productImg_name, productImg_location)
+      VALUES(
+      #{product_no},
+      #{productOriFile_name},
+      #{productImg_name},
+      #{productImg_location}
+      )
+   </insert>
+   <!-- 상품 이미지 리스트 by pno-->
+   <select id="selectProductListByPno" resultType="ProductImgVO">
+      SELECT * from wc_productImg where product_no = #{product_no}
+   </select>
+   <!-- sno로 product 조회 -->
+   <select id="selectProductListBySno" parameterType="Map" resultType="ProductVO">
+      select * from wc_product where seller_no = #{seller_no} ORDER BY product_no DESC limit #{page},10
+   </select>
+   <update id="addItemUpdate" parameterType="Map">
+   	UPDATE wc_product SET product_title = #{product_title},product_operationDate = #{product_operationDate},
+   	product_price = #{product_price}, product_skill = #{product_skill} WHERE product_no = #{bno}
+   </update>
+   <insert id="productUpdateLog" parameterType="ProductLogVO">
+   	INSERT INTO wc_product_log(seller_no,product_no,plog_exTitle,plog_afTitle,plog_exSkill,plog_afSkill,plog_exPrice,plog_afPrice,plog_exOperationDate,plog_afOperationDate,plog_Description)
+   	VALUES(#{seller_no},#{product_no},#{plog_exTitle},#{plog_afTitle},#{plog_exSkill},#{plog_afSkill},#{plog_exPrice},#{plog_afPrice},#{plog_exOperationDate},#{plog_afOperationDate},#{plog_Description})
+   </insert>
+    <select id="boardListMain" parameterType="Map" resultType="ProductVO">
+      SELECT p.product_no, p.product_title, p.product_price, p.seller_no , p.product_soldCount,p.product_readCount
+       , (SELECT ROUND(AVG(r.review_rating),1) FROM wc_review r WHERE p.product_no = r.product_no) AS 'rating'
+       , (SELECT COUNT(*) FROM wc_like l WHERE p.product_no = l.product_no) AS 'likeC'
+       FROM wc_product  p
+       ORDER BY likeC DESC LIMIT 8
+   </select>
+ </mapper>

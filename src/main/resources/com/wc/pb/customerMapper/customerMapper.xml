@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wc.pb.customer.dao.CustomerDAO">
+	<select id="customerLogin" resultType="com.wc.pb.customer.vo.CustomerVO">
+	 SELECT * FROM wc_customer 
+	 WHERE 
+	 customer_email=#{customer_email} AND customer_password=#{customer_password}
+	 AND customer_grade != 4
+	</select>
+	
+	<select id="selectByCustomerNo" resultType="com.wc.pb.customer.vo.CustomerVO">
+		SELECT * FROM wc_customer WHERE customer_no=#{customer_no}
+	</select>
+	
+	<!-- 회원가입 -->
+	<insert id="joinCustomer" parameterType="com.wc.pb.customer.vo.CustomerVO"> 
+		insert into wc_customer(customer_email, customer_nick, customer_password, customer_joinDate<if test="marketing_agree eq 'Y' ">, marketing_agree</if>) 
+		values(
+		#{customer_email},
+		#{customer_nick},
+		#{customer_password},
+		now()
+		<if test="marketing_agree eq 'Y' ">
+		,'Y'
+		</if>
+		)
+		
+	</insert>
+	<!-- 회원가입과 동시에 회원 지갑 생성 -->
+	<insert id="createCustomerWallet">
+		INSERT INTO wc_customer_wallet (customer_no)
+		VALUES (#{customer_no})
+	</insert>
+
+	<!-- 커스터머 no 받아오기 -->
+	<select id="getCustomerNo" parameterType="Integer" resultType="Integer">
+		select customer_no from wc_customer order by customer_no DESC limit 1
+	</select>
+	<!-- customer_wallet_no 받아오기 -->
+	<select id="customer_wallet_no" parameterType="Integer" resultType="Integer">
+		select customer_wallet_no from wc_customer_wallet order by customer_wallet_no DESC limit 1
+	</select>
+	<!-- 가입과 동시에 마이 캐쉬 만들기 디폴트 0-->
+	<insert id="createMyCash">
+		INSERT INTO wc_cash (customer_wallet_no, cash_amount)
+		VALUES (#{customer_wallet_no}, 0)
+	</insert>
+	<!-- 가입과 동시에 마이 마일리지 만들기 디폴트 0-->
+	<insert id="createMyMileage">
+		INSERT INTO wc_mileage (customer_wallet_no, mileage_amount)
+		VALUES (#{customer_wallet_no}, 0)
+	</insert>
+	
+	<!-- customer_no로 my wallet 조회하기 -->
+	<select id="selectMyWalletByCustomerNo" resultType="com.wc.pb.customer.vo.CustomerWalletVO">
+		SELECT * FROM wc_customer_wallet where customer_no = #{customer_no}
+	</select>
+	
+	<!-- wallet_no로 캐시 조회 -->
+	<select id="selectMyCashByWalletNo" resultType="com.wc.pb.customer.vo.CashVO">
+		SELECT * FROM wc_cash where customer_wallet_no = #{customer_wallet_no} order by cash_no DESC limit 1
+	</select>
+	
+	<!-- 캐시 충전하기 (승인 전) -->
+	<insert id="applyCashCharge">
+		INSERT INTO wc_cash (customer_wallet_no, cash_amount, cash_charge, cash_chargeDate, cash_status)
+		VALUES (#{customer_wallet_no}, #{cash_amount}, #{cash_charge}, now(), 2)
+	</insert>
+	<!-- 캐시 충전내역 조회하기 -->
+	<select id="selectMyCashListByWalletNo" resultType="com.wc.pb.customer.vo.CashVO" parameterType="Map">
+		SELECT * FROM wc_cash where customer_wallet_no = #{customer_wallet_no}
+		<if test="fromDate != null and toDate != null and fromDate != '' and toDate != ''">
+		AND DATE_FORMAT(cash_chargeDate, '%y-%m-%d')
+		 BETWEEN DATE_FORMAT(#{fromDate}, '%y-%m-%d') 
+		 AND DATE_FORMAT(#{toDate}, '%y-%m-%d')
+		</if>
+		 ORDER BY cash_no DESC LIMIT #{page},10
+	</select>
+	<!-- 무통장입금 미승인한 커스터머만 조회하기 -->
+	<select id="selectCashCustomerList" resultType="com.wc.pb.customer.vo.CashVO">
+		SELECT * FROM wc_cash WHERE cash_status = 2
+	</select>
+	<!-- wallet no로 cusomter_no 조회 -->
+	<select id="selectCustomerNoByWalletNo" resultType="com.wc.pb.customer.vo.CustomerWalletVO">
+		SELECT * FROM wc_customer_wallet where customer_wallet_no = #{customer_wallet_no}
+	</select>
+	<!-- 승인 후 cash status 2~3변환 -->
+	<update id="updateCashAuth">
+		UPDATE wc_cash SET cash_authDate=now(), cash_status ="3" where cash_no=#{cash_no}
+	</update>
+	<!-- 승인 후 cash insert -->
+	<insert id="insertCash">
+		INSERT INTO wc_cash (cash_amount, customer_wallet_no, cash_status)
+		VALUES (#{cash_amount}+#{cash_charge}, #{customer_wallet_no}, 4) 
+	</insert>
+	
+	
+	<!-- email auth insert-->
+	<insert id="getEmailAuth" parameterType="com.wc.pb.customer.vo.EmailAuthVO">
+		INSERT INTO wc_email_auth (customer_no)
+		values(
+		#{customer_no}
+		)
+	</insert>
+	
+	<!-- email auth update -->
+	<update id="updateEmailAuth" parameterType="com.wc.pb.customer.vo.EmailAuthVO">
+		update wc_email_auth set email_auth_check = 'Y'
+	</update>
+	
+	<!-- 마이페이지 회원정보 변경 프로필 사진 삽입 -->
+	<insert id="applyMyProfileImg" parameterType="Map">
+		INSERT INTO wc_customer_img(customer_no, customer_imgOriFileName, customer_imgName, customer_imgLocation, img_addDateTime) 
+		VALUES (#{customer_no}, #{customer_imgOriFileName}, #{customer_imgName}, #{customer_imgLocation}, now())
+	</insert>
+	<!-- 마이페이지 프로필 사진 조회 by customer_no -->
+	<select id="selectImgByCustomerNo" parameterType="com.wc.pb.customer.vo.CustomerImgVO" resultType="com.wc.pb.customer.vo.CustomerImgVO">
+		select * from wc_customer_img where customer_no = #{customer_no} order by img_addDateTime DESC limit 1
+	</select>
+	<!-- 회원정보 변경 닉네임 변경 -->
+	<update id="changeNick" parameterType="com.wc.pb.customer.vo.CustomerVO">
+		UPDATE wc_customer
+		SET customer_nick = #{customer_nick}
+		WHERE customer_email = #{customer_email} 
+	</update>
+	<!-- 회원정보 변경 비밀번호 일치여부 -->
+	<select id="pwChk" parameterType="com.wc.pb.customer.vo.CustomerVO" resultType="Integer">
+		SELECT count(*) FROM wc_customer 
+		WHERE customer_email=#{customer_email} AND customer_password=#{customer_password}
+	</select>
+	<!-- 회원정보 변경 비밀번호 변경 -->
+	<update id="changeMyPassword" parameterType="com.wc.pb.customer.vo.CustomerVO">
+		UPDATE wc_customer
+		SET customer_password = #{customer_password}
+		WHERE customer_email = #{customer_email} 
+	</update>
+	<!-- 회원탈퇴 ->등급 0 지정 -->
+	<update id="withdrawal" parameterType="com.wc.pb.customer.vo.CustomerVO">
+		UPDATE wc_customer
+		SET customer_grade = 0
+		WHERE customer_email = #{customer_email} 
+	</update>		
+	<!-- 암호찾기/현재 이메일 조회로만 -->
+	<select id="findPW" resultType="com.wc.pb.customer.vo.CustomerVO">
+		select * from wc_customer where customer_email=#{customer_email}
+	</select>
+	
+	<!-- 이메일 통한 암호 변경 -->
+	<update id="updatePwByEmail" parameterType="com.wc.pb.customer.vo.CustomerVO">
+		UPDATE wc_customer
+		SET customer_password = #{customer_password} 
+		WHERE customer_email = #{customer_email}
+	</update>
+	<!-- 판매자 등록 서류 인설트-->
+	<insert id="registSeller" parameterType="map">
+		INSERT INTO wc_sellerRegistImg(customer_no, sellerImg_OriFileName, sellerImg_name, sellerImg_location, sellerImg_addDate) 
+		VALUES (#{customer_no}, #{sellerImg_OriFileName}, #{sellerImg_name}, #{sellerImg_location}, now())
+	</insert>
+	<!-- 판매자 대기 상태 (grade=2) -->
+	<update id="updateCustomerGrade" parameterType="com.wc.pb.customer.vo.CustomerVO">
+		UPDATE wc_customer
+		SET customer_grade = 2
+		WHERE customer_no = #{customer_no}
+	</update>
+	<!-- 판매자 신청 status 등록 -->
+	<insert id="insertSellerApply" parameterType="com.wc.pb.customer.vo.SellerAuthVO">
+		INSERT INTO wc_seller_auth(customer_no, seller_authCheck, seller_applyDateTime) 
+		VALUES (#{customer_no}, 'N', now())
+	</insert>
+	<!-- regist status조회 -->
+	<select id="selectRegistStatus" resultType="com.wc.pb.customer.vo.SellerAuthVO">
+		SELECT * FROM wc_seller_auth WHERE customer_no = #{customer_no}
+	</select>
+	<!-- 판매자 번호로 조회 -->
+	<select id="selectBySellerNo" resultType="com.wc.pb.customer.vo.CustomerVO">
+		SELECT c.* FROM wc_customer c where
+		c.customer_no=(SELECT s.customer_no FROM wc_seller s WHERE s.seller_no=#{seller_no});
+	</select>
+	<!-- 판매자 서류보기 디테일 이미지 -->
+	<select id="selectSellerRegistImgListByNo" resultType="com.wc.pb.customer.vo.SellerRegistImgVO">
+		SELECT * from wc_sellerRegistImg WHERE customer_no=#{customer_no}
+	</select>
+	<!-- 신청번호로 서류보기 디테일 -->
+	<select id="selectRegistStatusByseller_auth_no" resultType="com.wc.pb.customer.vo.SellerAuthVO">
+		SELECT * FROM wc_seller_auth WHERE seller_auth_no = #{seller_auth_no}
+	</select>
+	<select id="getCInquiryList" resultType="com.wc.pb.seller.vo.InquiryToSellerVO">
+		SELECT * FROM wc_inquiryToSeller where customer_no=#{customer_no} 
+	</select>
+	<!-- 올 멤버 -->
+	<select id="selectAllCustomer" parameterType="Integer" resultType="com.wc.pb.customer.vo.CustomerVO">
+		SELECT * FROM wc_customer 
+		<if test="opt == 'nick'">WHERE customer_nick LIKE #{memberSearch} </if>
+		<if test="opt == 'email'">WHERE customer_email LIKE #{memberSearch} </if>
+		LIMIT #{page},10
+	</select>
+	
+	<!-- grade 2 이상 멤버 (2==판매자 신청, 3==판매자 전환 완료 -->
+	<select id="selectSellerApplyCustomerList" resultType="com.wc.pb.customer.vo.CustomerVO">
+		SELECT * FROM wc_customer where customer_grade >= 2 LIMIT #{page},10
+	</select>
+	<!-- customer_no로 seller auth 조회 -->
+	<select id="selectSellerAuthByNo" resultType="com.wc.pb.customer.vo.SellerAuthVO">
+		SELECT * FROM wc_seller_auth where customer_no=#{customer_no}
+	</select>
+	<!-- 판매자 승인 받았을시 grade 3으로 등급업 -->
+	<update id="sellerAuthProcess">
+		UPDATE wc_customer set customer_grade ='3' where customer_no=#{customer_no}
+	</update>
+	<!-- 판매자 승인 받았을시 seller_auth 테이블 업데이트 -->
+	<update id="sellerAuthProcess2">
+		UPDATE wc_seller_auth set seller_authCheck ='Y', seller_authCheckDate=now() where seller_auth_no=#{seller_auth_no}
+	</update>
+	
+	<!-- 페이징 토탈카운트 -->
+	<select id="InquiryTotalCount" parameterType="Integer" resultType="Integer">
+		SELECT COUNT(*) as count FROM wc_inquiryToSeller WHERE customer_no = #{customer_no}
+	</select>
+	<select id="searchInquiryList" resultType="com.wc.pb.seller.vo.InquiryToSellerVO">
+	select t2.* from(
+		select t1.*, @ROWNUM := @ROWNUM+1 as ROWNUM from 
+			(select * FROM wc_inquiryToSeller where customer_no=#{customer_no} AND inquiry_status != 'R'
+				<if test="search_type=='inquiry_title' and search_word != null and search_word != '' ">
+					AND inquiry_title like CONCAT('%', #{search_word}, '%')
+				</if>
+				<if test="search_type=='inquiry_content' and search_word != null and search_word != '' ">
+					AND inquiry_content like CONCAT('%', #{search_word}, '%')
+				</if>
+				order by inquiry_date DESC 
+				) t1
+			) t2
+			limit #{page},10
+	</select>
+	<!-- getContentCount -->
+	<select id="getContentCount" resultType="int">
+		select count(*) from wc_inquiryToSeller where customer_no=#{customer_no}		
+	</select>
+	
+	<!-- getSearchCount -->
+	<select id="getSearchCount" resultType="int">
+		select count(*) from wc_inquiryToSeller where customer_no=#{customer_no}
+		<if test="search_type=='inquiry_title' and search_word != null and search_word != '' ">
+					AND inquiry_title like CONCAT('%', #{search_word}, '%')
+			</if>
+			<if test="search_type=='inquiry_content' and search_word != null and search_word != '' ">
+					AND inquiry_content like CONCAT('%', #{search_word}, '%')
+			</if>
+	</select>
+	
+	<select id="getCInquiryContent" resultType="com.wc.pb.seller.vo.InquiryToSellerVO">
+		SELECT * FROM wc_inquiryToSeller where inquiry_no=#{inquiry_no}
+	</select>
+	
+	<!-- 답변보기 -->
+	<select id="getReplyContent" resultType="com.wc.pb.seller.vo.InquiryToSellerVO">
+		SELECT * FROM wc_inquiryToSeller where inquiry_parent=#{inquiry_no}
+	</select>
+	
+	<insert id="insertInquiry" parameterType="com.wc.pb.seller.vo.InquiryToSellerVO">
+		INSERT INTO wc_inquiryToSeller (seller_no, customer_no, product_no, inquiry_title, inquiry_content, inquiry_date)
+		VALUES(
+		#{seller_no},
+		#{customer_no},
+		#{product_no},
+		#{inquiry_title},
+		#{inquiry_content},
+		now()
+		)
+	</insert>
+	<update id="deleteInquiry" parameterType="com.wc.pb.seller.vo.InquiryToSellerVO">
+		UPDATE wc_inquiryToSeller 
+		SET inquiry_status ='D', inquiry_deleteDateTime=now()
+		WHERE inquiry_no = #{inquiry_no}
+	</update>
+	<select resultType="CustomerImgVO" id="customerDetail_img" parameterType="CustomerImgVO">
+		select * from wc_customer_img where customer_no = #{customer_no} 
+	</select>
+	<!-- 사진 기존값 있는지 여부 확인 1 or 0 카운트 -->
+	<select id="selectImgNoByCustomerNo" resultType="Integer">
+		select count(customer_imgNo) from wc_customer_img where customer_no = #{customer_no}
+	</select>
+	<!-- 사진 기존 값 카운트 1 이면 삭제 -->
+	<delete id="deleteCustomerProfileImg">
+		delete from wc_customer_img where customer_no = #{customer_no}
+	</delete>
+	
+	<!-- 여기서부터 -->
+	<select id="Mileage_amountList" parameterType="Integer" resultType="MileageVO">
+		SELECT * FROM wc_mileage 
+		WHERE customer_wallet_no = #{customer_wallet_no}
+		ORDER BY mileage_no DESC
+		LIMIT 1
+	</select>
+	<select id="selectAllCustomerList" parameterType="Map" resultType="Map">
+		SELECT * FROM wc_customer c JOIN wc_customer_wallet w ON c.customer_no =w.customer_no 
+		<if test="opt == 'nick'">WHERE c.customer_nick LIKE #{memberSearch} </if>
+		<if test="opt == 'email'">WHERE c.customer_email LIKE #{memberSearch} </if>
+		LIMIT #{page},10
+	</select>
+	<select id="productSellerNo" parameterType="Integer" resultType="Integer">
+		SELECT seller_no FROM wc_product WHERE product_no= #{bno}
+	</select>
+	<!-- 이메일 인증 여부 카운트 1이면 로그인 0 이면 불가 -->
+   <select id="checkEmailAuth" resultType="Integer">
+      SELECT count(email_auth_check) FROM wc_email_auth WHERE customer_no=#{customer_no} AND email_auth_check='y'
+   </select>
+   <!-- 리뷰카운트 -->
+   <select id="selectReviewCount" resultType="Integer" parameterType="Integer">
+         SELECT COUNT(*) FROM wc_review WHERE customer_no=#{customer_no}
+   </select>
+   <!-- 조인로그 -->
+   <insert id="insertJoinLog" parameterType="Map">
+         INSERT INTO wc_join_log (customer_no, jlog_ip, jlog_dateTime)
+         VALUES (#{customer_no}, #{jlog_ip}, #{jlog_dateTime})
+   </insert>
+   <!-- 닉네임 중복체크 -->
+   <select id="nickChk" resultType="Integer">
+      SELECT Count(customer_nick) FROM wc_customer
+      WHERE customer_nick = #{customer_nick}
+   </select>
+   <!-- 이메일 중복확인 -->
+   <select id="emailChk" resultType="Integer">
+         SELECT COUNT(customer_email) from wc_customer where customer_email = #{customer_email}
+   </select>
+   <!-- 리뷰리스트 -->
+   <select id="selectReviewList" parameterType="Map" resultType="com.wc.pb.customer.vo.ReviewVO">
+         SELECT * FROM wc_review WHERE customer_no=#{customer_no} LIMIT #{page},10
+   </select>
+   <select id="selectReviewListCount" parameterType="Integer" resultType="Integer">
+         SELECT COUNT(*) FROM wc_review WHERE customer_no=#{customer_no}
+   </select>
+   <select id="selectProductCountBySno" parameterType="Integer" resultType="Integer">
+      select COUNT(*) from wc_product where seller_no = #{seller_no}
+   </select>
+</mapper>

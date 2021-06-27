@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<typeAliases>
+		<typeAlias type="com.wc.pb.customer.vo.CustomerVO" alias="CustomerVO" />
+
+		<typeAlias type="com.wc.pb.seller.vo.SellerVO" alias="SellerVO" />
+
+		<typeAlias type="com.wc.pb.customer.vo.EmailAuthVO" alias="EmailAuthVO" />
+
+		<typeAlias type="java.lang.Integer" alias="Integer" />
+
+		<typeAlias type="com.wc.pb.admin.vo.NoticeBoardVO" alias="NoticeBoardVO" />
+
+		<typeAlias type="com.wc.pb.admin.vo.NoticeBoardImgVO" alias="NoticeBoardImgVO" />
+
+		<typeAlias type="com.wc.pb.admin.vo.AdminVO" alias="AdminVO" />
+
+		<typeAlias type="com.wc.pb.admin.vo.InquiryToAdminVO" alias="InquiryToAdminVO" />
+
+		<typeAlias type="com.wc.pb.customer.vo.CouponVO" alias="CouponVO" />
+
+		<typeAlias type="com.wc.pb.seller.vo.ProductVO" alias="ProductVO" />
+
+		<typeAlias type="com.wc.pb.seller.vo.ProductImgVO" alias="ProductImgVO" />
+
+		<typeAlias type="com.wc.pb.customer.vo.CustomerImgVO" alias="CustomerImgVO" />
+
+		<typeAlias type="com.wc.pb.seller.vo.SellerVO" alias="SellerVO" />
+
+		<typeAlias type="com.wc.pb.customer.vo.ReviewVO" alias="ReviewVO" />
+
+		<typeAlias type="com.wc.pb.customer.vo.CashVO" alias="CashVO" />
+
+		<typeAlias type="com.wc.pb.customer.vo.MileageVO" alias="MileageVO" />
+
+		<typeAlias type="com.wc.pb.customer.vo.MyCouponVO" alias="MyCouponVO" />
+
+		<typeAlias type="com.wc.pb.customer.vo.OrderVO" alias="OrderVO" />
+
+		<typeAlias type="com.wc.pb.common.vo.MainCategoryVO" alias="MainCategoryVO" />
+
+		<typeAlias type="com.wc.pb.common.vo.SubCategoryVO" alias="SubCategoryVO" />
+		<typeAlias type="com.wc.pb.log.vo.LoginLogVO" alias="LoginLogVO" />
+		<typeAlias type="com.wc.pb.log.vo.ProductLogVO" alias="ProductLogVO" />
+		<typeAlias type="com.wc.pb.log.vo.AccessLogVO" alias="AccessLogVO" />
+		<typeAlias type="com.wc.pb.log.vo.JoinLogVO" alias="JoinLogVO" />
+		<typeAlias type="com.wc.pb.log.vo.SellerLogVO" alias="SellerLogVO" />
+		<typeAlias type="com.wc.pb.customer.vo.CustomerLogVO" alias="CustomerLogVO" />
+	</typeAliases>
+</configuration>
+  

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wc.pb.customerMapper.myPageMapper">
+	<select id="orderList" resultType="Map" parameterType="Map">
+		SELECT wc_order.* , wc_product.product_title as title, wc_product.product_price as price
+		FROM wc_order 
+		INNER JOIN wc_product ON wc_order.product_no = wc_product.product_no
+		WHERE customer_no = #{customer_no}
+		<choose>
+			<when test="fromDate != null and toDate != null and fromDate != '' and toDate != ''">
+			 AND DATE_FORMAT(wc_order.order_date, '%y-%m-%d')
+				 BETWEEN DATE_FORMAT(#{fromDate}, '%y-%m-%d') 
+				 AND DATE_FORMAT(#{toDate}, '%y-%m-%d')
+			</when>
+		</choose>
+		ORDER BY order_no DESC LIMIT #{page},10
+	</select>
+	
+	<select id="hoogiList" resultType="com.wc.pb.customer.vo.ReviewVO">
+		SELECT wc_product.product_no, wc_product.product_title, wc_review.review_content, wc_review.review_writeDate
+		FROM wc_product 
+		INNER JOIN wc_review ON wc_product.product_no = wc_review.product_no
+	</select>
+	<select id="likeList" parameterType="Map" resultType="com.wc.pb.customer.vo.LikeVO">
+ 		select * from wc_like where customer_no = #{customer_no}
+   </select>
+	<select id="likeListCount" parameterType="Map" resultType="Integer">
+		SELECT COUNT(*)
+		FROM wc_like 
+		INNER JOIN wc_product ON wc_like.product_no = wc_product.product_no
+		INNER JOIN wc_productImg ON wc_like.product_no = wc_productImg.product_no
+		where wc_like.customer_no = #{customer_no}
+	</select>
+	
+	<select id="chargeList" resultType="com.wc.pb.customer.vo.CashVO">
+		SELECT wc_cash.cash_chargeDate, wc_cash.cash_charge, wc_cash.cash_paymentMethod, wc_cash.cash_status, wc_customer_wallet.customer_wallet_no
+		FROM wc_cash
+		INNER JOIN wc_customer_wallet ON wc_cash.customer_wallet_no = wc_customer_wallet.customer_wallet_no
+		ORDER BY wc_cash.cash_no DESC 
+		LIMIT #{page},10
+		<choose>
+			<when test="fromDate != null and toDate != null and fromDate != '' and toDate != ''">
+			WHERE DATE_FORMAT(wc_cash.cash_chargeDate, '%y-%m-%d')
+				 BETWEEN DATE_FORMAT(#{fromDate}, '%y-%m-%d') 
+				 AND DATE_FORMAT(#{toDate}, '%y-%m-%d')
+			</when>
+		</choose>
+	</select>
+	
+	
+	
+	<!-- 쿠폰함 -->
+	<select id="myCouponList" resultType="Map" parameterType="Map">
+		SELECT * from wc_myCoupon m JOIN wc_coupon c ON m.coupon_no = c.coupon_no 
+		WHERE m.customer_wallet_no = #{customer_walletNo} 
+		AND m.myCoupon_status = 'Y' AND c.coupon_expireDate > DATE_FORMAT(NOW(),'%Y-%m-%d')
+		ORDER BY m.myCoupon_no DESC
+		LIMIT #{page},10
+	</select>
+	<select id="myCouponUseList" resultType="Map" parameterType="Map">
+		SELECT * from wc_myCoupon m JOIN wc_coupon c ON m.coupon_no = c.coupon_no 
+		WHERE m.customer_wallet_no = #{customer_walletNo} 
+		AND m.myCoupon_status = 'Y' AND c.coupon_expireDate > DATE_FORMAT(NOW(),'%Y-%m-%d')
+	</select>
+	<select id="MyCouponTotalList" resultType="Integer" parameterType="Integer">
+		SELECT COUNT(*) from wc_myCoupon m JOIN wc_coupon c ON m.coupon_no = c.coupon_no 
+		WHERE m.customer_wallet_no = #{customer_walletNo} 
+		AND m.myCoupon_status = 'Y' AND c.coupon_expireDate > DATE_FORMAT(NOW(),'%Y-%m-%d')
+	</select>
+	<!-- 손님의 지갑 번호 -->
+	<select id="customer_no" parameterType="Integer" resultType="Integer">
+		SELECT customer_wallet_no FROM wc_customer_wallet where customer_no =#{customer_no}
+	</select>
+	<!-- 손님 쿠폰 디테일 -->
+	<select id="myCouponDetail" resultType="Map" parameterType="Map">
+		SELECT * from wc_myCoupon m JOIN wc_coupon c on m.coupon_no = c.coupon_no WHERE m.myCoupon_status = 'Y' AND myCoupon_no = #{coupon}
+	</select>
+	<!-- 손님 마일리지 조회 -->
+	<select id="mileageAmount" parameterType="Integer" resultType="Integer">
+		SELECT mileage_amount
+		from wc_mileage m JOIN wc_customer_wallet c ON m.customer_wallet_no = c.customer_wallet_no
+		WHERE m.customer_wallet_no = #{customer_walletNo}
+		ORDER BY mileage_no DESC
+		LIMIT 1
+	</select>
+	<!-- 손님 캐시 조회 -->
+	<select id="cashAmount" parameterType="Integer" resultType="Integer">
+		SELECT cash_amount
+		from wc_cash m JOIN wc_customer_wallet c ON m.customer_wallet_no = c.customer_wallet_no
+		WHERE m.customer_wallet_no = #{customer_walletNo}
+		ORDER BY cash_no DESC
+		LIMIT 1
+	</select>
+	<!-- 쿠폰코드 조회 -->
+	<select id="registeredCoupon" resultType="CouponVO" parameterType="CouponVO">
+		SELECT * FROM wc_coupon WHERE coupon_code = #{code} AND coupon_status = 'Y' AND coupon_expireDate > DATE_FORMAT(NOW(),'%Y-%m-%d')
+	</select>
+	<insert id="registerCoupon" parameterType="Map">
+		INSERT INTO wc_myCoupon(customer_wallet_no,coupon_no,myCoupon_status)
+		VALUES(#{customer_wallet_no},#{coupon_no},'Y')
+	</insert>
+	<!-- 주문 결제 내역 작성 -->
+	<insert id="productPayment" parameterType="Map">
+		INSERT INTO wc_order(customer_no,seller_no,product_no,order_totalDiscountPrice,order_couponDiscountPrice,order_payType,totalPrice<if test="order_status != null">,order_status</if><if test="coupon_no != null">,coupon_no</if><if test="order_useMileage != null">,order_useMileage</if>)
+		VALUES(#{customer_no},#{seller_no},#{product_no},#{order_totalDiscountPrice},#{order_couponDiscountPrice},#{order_payType},#{totalPrice}<if test="order_status != null">,#{order_status}</if><if test="coupon_no != null">,#{coupon_no}</if><if test="order_useMileage != null">,#{order_useMileage}</if>)
+	</insert>
+	<!-- 쿠폰사용 상태 처리-->
+	<update id="myCoupon_status" parameterType="Integer">
+		UPDATE wc_myCoupon SET myCoupon_status = 'N' WHERE myCoupon_no = #{myCoupon_no}
+	</update>
+	<!-- 마일리지 사용 내역 작성 -->
+	<insert id="useMileage" parameterType="MileageVO">
+		INSERT INTO wc_mileage(customer_wallet_no,mileage_amount<if test="mileage_usage != null">,mileage_usage</if><if test="mileage_add != null">,mileage_add</if>)
+		VALUES (#{customer_wallet_no},#{mileage_amount}<if test="mileage_usage != null">,#{mileage_usage}</if><if test="mileage_add != null">,#{mileage_add}</if>)
+	</insert>
+	<!-- 캐시 사용 내역 작성 -->
+	<insert id="useCash" parameterType="CashVO">
+		INSERT INTO wc_cash(customer_wallet_no,cash_amount,cash_usage)
+		VALUES (#{customer_wallet_no},#{cash_amount},#{cash_usage})
+	</insert>
+	<!-- 상품판매개수 증가 -->
+	<update id="soldIncrease" parameterType="Map">
+		UPDATE wc_product SET product_soldCount = product_soldCount+1 where product_no=#{product_no}
+	</update>
+	<!-- 결제완료 내역 조회 -->
+	<select id="orderDetail" parameterType="OrderVO" resultType="OrderVO">
+		SELECT *
+		FROM wc_order
+		WHERE product_no = #{bno}
+		ORDER BY order_no DESC LIMIT 1
+	</select>
+	<!-- 메인카테고리 이름 -->
+	<select id="mainCate" parameterType="Integer" resultType="String">
+		SELECT mainCate_name
+		FROM wc_mainCategory
+		WHERE mainCate_no = #{mainCate_no}
+	</select>
+	<!-- 서브카테고리 이름 -->
+	<select id="subCate" parameterType="Integer" resultType="String">
+		SELECT subCate_name
+		FROM wc_subCategory
+		WHERE subCate_no = #{subCate_no}
+	</select>
+	<!-- 마일리지 적립 조회 -->
+	<select id="mileage_add" parameterType="Integer" resultType="Integer">
+		SELECT mileage_add
+		FROM wc_mileage
+		WHERE customer_wallet_no = #{customer_walletNo}
+		ORDER BY mileage_no DESC LIMIT 1;
+	</select>
+	
+	<!-- 사용지 지갑 생성 -->
+	<insert id="customer_wallet" parameterType="Integer">
+		INSERT INTO wc_customer_wallet(customer_no) VALUES(#{customer_no})
+	</insert>
+	
+	<select id="orderListCount" parameterType="Integer" resultType="Integer">
+		SELECT COUNT(*) as count FROM wc_order WHERE customer_no = #{customer_no}
+	</select>
+	<select id="orderListCount_date" parameterType="Map" resultType="Integer">
+		SELECT COUNT(*) as count FROM wc_order WHERE customer_no = #{customer_no} AND order_date BETWEEN #{fromDate} AND #{toDate}
+	</select>
+	
+	
+	<!-- 여기부터 -->
+	<!-- 내 쿠폰 갯수 -->
+	<select id="myCouponCount" resultType="Integer" parameterType="Integer">
+		SELECT COUNT(*) from wc_myCoupon m JOIN wc_coupon c ON m.coupon_no = c.coupon_no WHERE m.customer_wallet_no = #{customer_walletNo} AND m.myCoupon_status = 'Y' AND c.coupon_expireDate > DATE_FORMAT(NOW(),'%Y-%m-%d')
+	</select>
+	<select id="myCash" resultType="Integer" parameterType="Integer">
+		SELECT cash_amount FROM wc_cash WHERE customer_wallet_no = #{customer_walletNo} ORDER BY cash_no DESC LIMIT 1
+	</select>
+	<select id="myMileage" resultType="Integer" parameterType="Integer">
+		SELECT mileage_amount FROM wc_mileage WHERE customer_wallet_no = #{customer_walletNo} ORDER BY mileage_no DESC LIMIT 1
+	</select>
+	<select id="mileageList" parameterType="Map" resultType="MileageVO">
+		SELECT * FROM wc_mileage WHERE customer_wallet_no = #{customer_walletNo} 
+		<choose>
+			<when test="fromDate != null and toDate != null and fromDate != '' and toDate != ''">
+			AND DATE_FORMAT(mileage_date, '%y-%m-%d')
+				 BETWEEN DATE_FORMAT(#{fromDate}, '%y-%m-%d') 
+				 AND DATE_FORMAT(#{toDate}, '%y-%m-%d')
+			</when>
+		</choose>
+		ORDER BY mileage_no DESC LIMIT #{page},10
+	</select>
+	<select id="mileageCount" resultType="Integer" parameterType="Integer">
+		SELECT COUNT(*) FROM wc_mileage WHERE customer_wallet_no = #{customer_walletNo}
+	</select>
+	<select id="mileageCount_date" resultType="Integer" parameterType="Map">
+		SELECT COUNT(*) FROM wc_mileage WHERE customer_wallet_no = #{customer_walletNo} AND mileage_date BETWEEN #{fromDate} AND #{toDate}
+	</select>
+	<select id="chargeCashCount" resultType="Integer" parameterType="Integer">
+		SELECT COUNT(*) FROM wc_cash WHERE customer_wallet_no = #{customer_walletNo}
+	</select>
+	<select id="chargeCashCount_date" resultType="Integer" parameterType="Map">
+		SELECT COUNT(*) FROM wc_cash WHERE customer_wallet_no = #{customer_walletNo} AND cash_chargeDate BETWEEN #{fromDate} AND #{toDate}
+	</select>
+	<!-- 찜목록 -->
+   <insert id="like_check" parameterType="map">
+      insert into wc_like (product_no, customer_no, like_check, like_date) values(#{bno}, #{customer_no}, #{like_check}, now())
+   </insert>
+   <select id="getLikedCheck" parameterType="map" resultType="int">
+      select count(*) from wc_like where customer_no = #{customer_no} and product_no = #{bno}
+   </select>
+   <delete id="like_checkCancel" parameterType="map">
+      delete from wc_like where customer_no = #{customer_no} and product_no = #{bno}
+   </delete>
+</mapper>

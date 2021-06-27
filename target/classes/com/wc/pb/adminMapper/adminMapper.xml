@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="admin">
+	
+	<select id="adminLogin" parameterType="AdminVO" resultType="AdminVO">
+		select * from wc_admin where admin_id=#{admin_id} and admin_password=#{admin_password}
+	</select>
+
+	<insert id="noticeWrite" parameterType="Map">
+		INSERT INTO wc_notice_board(admin_no,nboard_title,nboard_content,nboard_date)
+		VALUES('1',#{notice_title},#{notice_content},NOW())
+	</insert>
+	
+	<insert id="noticeWrite_img" parameterType="Map">
+		 INSERT INTO wc_notice_board_img(nboard_no,nboard_oriFileName,nboard_imgName,nboard_location) VALUES (#{nboard_no},#{nboard_oriFileName},#{nboard_imgName},#{nboard_location})
+	</insert>
+	
+	<select id="noticeWrite_detail" parameterType="Integer" resultType="Integer">
+		SELECT nboard_no from wc_notice_board ORDER BY nboard_no DESC LIMIT 1
+	</select>
+	
+	<select id="noticeList" parameterType="NoticeBoardVO" resultType="NoticeBoardVO">
+		SELECT admin_name,n.admin_no,nboard_no,nboard_title,nboard_date,nboard_readCount 
+		FROM wc_admin a JOIN wc_notice_board n
+		WHERE a.admin_no = n.admin_no
+		ORDER BY nboard_no DESC
+		limit #{page},20
+	</select>
+	
+	<select id="totalCount" parameterType="Integer" resultType="Integer">
+		SELECT COUNT(*) as count FROM wc_notice_board
+	</select>
+	
+	<select id="noticeDetail" parameterType="NoticeBoardVO" resultType="NoticeBoardVO">
+		SELECT nboard_no,admin_no,nboard_title,nboard_content,nboard_date,nboard_readCount,
+		(SELECT admin_name FROM wc_admin WHERE admin_no= (SELECT admin_no FROM wc_notice_board WHERE nboard_no = ${bno})) AS admin_name
+ 		FROM wc_notice_board WHERE nboard_no = #{bno}
+	</select>
+	
+	<select id="noticeDetail_img" parameterType="NoticeBoardImgVO" resultType="NoticeBoardImgVO">
+		SELECT * FROM wc_notice_board_img WHERE nboard_no = #{bno}
+	</select>
+	
+	<update id="noticeUpdate" parameterType="NoticeBoardVO">
+		UPDATE wc_notice_board SET nboard_title = #{notice_title}, nboard_content = #{notice_content} WHERE nboard_no = #{bno}
+	</update>
+	
+	<update id="noticeUpdate_img" parameterType="NoticeBoardImgVO">
+		UPDATE wc_notice_board_img SET nboard_oriFileName = #{nboard_oriFileName}, nboard_imgName = #{nboard_imgName},nboard_location = #{nboard_location}  WHERE nboard_img_no = #{nboard_img_no}
+	</update>
+	
+	<delete id="noticeDelete" parameterType="Integer">
+		DELETE FROM wc_notice_board WHERE nboard_no = #{bno}
+	</delete>
+	<delete id="noticeDelete_img" parameterType="Integer">
+		DELETE FROM wc_notice_board_img WHERE nboard_no = #{bno}
+	</delete>
+	
+	
+	<!-- 문의함 -->
+	<select id="inquiryList" parameterType="InquiryToAdminVO" resultType="InquiryToAdminVO">
+		SELECT *,(SELECT c.customer_nick FROM wc_customer c WHERE c.customer_no = i.customer_no) AS 'writer_nick' FROM wc_inquiryToAdmin i ORDER BY inquiry_no DESC limit #{page},20
+	</select>
+	
+	<select id="inquiry_totalCount" parameterType="Integer" resultType="Integer">
+		SELECT COUNT(*) as count FROM wc_inquiryToAdmin
+	</select>
+	
+	<select id="inquiryDetail" parameterType="InquiryToAdminVO" resultType="InquiryToAdminVO">
+		SELECT *,(SELECT c.customer_nick FROM wc_customer c WHERE c.customer_no = i.customer_no) AS 'writer_nick' FROM wc_inquiryToAdmin i WHERE inquiry_no = ${bno}
+	</select>
+	
+	<insert id="inquiryWrite" parameterType="Map">
+		INSERT INTO wc_inquiryToAdmin(<if test="customer_no != null">customer_no,</if>inquiry_title,inquiry_content,inquiry_date<if test="inquiry_parent != null">,inquiry_parent</if>)
+		VALUES(<if test="customer_no != null">#{customer_no},</if>#{inquiry_title},#{inquiry_content},NOW()<if test="inquiry_parent != null">,${inquiry_parent}</if>)
+	</insert>
+	
+	<update id="inquiryUpdate" parameterType="InquiryToAdminVO">
+		UPDATE wc_inquiryToAdmin SET inquiry_title = #{inquiry_title}, inquiry_content = #{inquiry_content} WHERE inquiry_no = #{bno}
+	</update>
+	
+	<update id="inquiryWrite_status" parameterType="Integer">
+		UPDATE wc_inquiryToAdmin SET inquiry_status = 'Y', inquiry_replyDateTime = now() WHERE inquiry_no = #{ino}
+	</update>
+	
+	<update id="inquiryDelete_status" parameterType="Integer">
+		UPDATE wc_inquiryToAdmin SET inquiry_status = 'N', inquiry_replyDateTime = (NULL) WHERE inquiry_no = #{ino}
+	</update>
+	
+	
+	<delete id="inquiryDelete" parameterType="Integer">
+		DELETE FROM wc_inquiryToAdmin WHERE inquiry_no = #{bno}
+	</delete>
+	
+	
+	<!-- 쿠폰발행 -->
+	<insert id="addCoupon" parameterType="CouponVO">
+		INSERT INTO wc_coupon(coupon_name,coupon_code,coupon_expireDate
+		<if test="coupon_discountPrice != null">,coupon_discountPrice</if>
+		<if test="coupon_discountPercent != null">,coupon_discountPercent</if>) 
+		VALUES(#{coupon_name},#{coupon_code},#{coupon_expireDate}
+		<if test="coupon_discountPrice != null">,#{coupon_discountPrice}</if>
+		<if test="coupon_discountPercent != null">,#{coupon_discountPercent}</if>)
+	</insert>
+	<!-- 여기서부터 -->
+	<select id="allCouponCount" resultType="Integer">
+      SELECT COUNT(*) as count FROM wc_coupon
+   </select>
+   <select id="adminSoldCount" resultType="Integer">
+      SELECT COUNT(*) as count FROM wc_order
+   </select>
+   <select id="allInquiryCount" resultType="Integer">
+      SELECT COUNT(*) as count FROM wc_inquiryToAdmin WHERE inquiry_parent = 0
+   </select>
+	<!-- 멤버 전체 카운트 -->
+	<select id="memberAllCount" resultType="Integer">
+		SELECT COUNT(*) FROM wc_customer
+	</select>
+	<!-- 누적 판매 카운트 -->
+	<select id="sellerApplyCount" resultType="Integer">
+		SELECT COUNT(*) FROM wc_customer where customer_grade >= 2
+	</select>
+	<!-- 쿠폰 전체 카운트 -->
+	<select id="couponAllCount" resultType="Integer">
+		SELECT COUNT(*) FROM wc_coupon
+	</select>
+	<!-- 쿠폰 전체리스트 -->
+	<select id="couponAllList" resultType="CouponVO">
+		SELECT * FROM wc_coupon 
+		<if test="opt == 'nick'">WHERE coupon_name LIKE #{memberSearch} </if>
+		<if test="opt == 'email'">WHERE coupon_code LIKE #{memberSearch} </if>
+		ORDER BY coupon_no DESC
+		LIMIT #{page},10
+	</select>
+	<!-- 마일리지 지급 -->
+	<insert id="mileageGive" parameterType="Map">
+		INSERT INTO wc_mileage(customer_wallet_no,mileage_amount,mileage_add)
+		VALUES(#{customer_wallet_no},#{mileage_amount},#{mileage_give})
+	</insert>
+	<select id="memberAllSearchCount" parameterType="Map" resultType="Integer">
+		SELECT COUNT(*) FROM wc_customer c JOIN wc_customer_wallet w ON c.customer_no =w.customer_no 
+		<if test="opt == 'nick'">WHERE c.customer_nick LIKE #{memberSearch} </if>
+		<if test="opt == 'email'">WHERE c.customer_email LIKE #{memberSearch} </if>
+	</select>
+	<select id="couponAllSearchCount" parameterType="Map" resultType="Integer">
+		SELECT COUNT(*) FROM wc_coupon c WHERE 
+		<if test="opt == 'nick'">c.coupon_name </if>
+		<if test="opt == 'code'">c.coupon_code</if> LIKE #{memberSearch} 
+	</select>
+	<select id="customerImg_detail" parameterType="Integer" resultType="CustomerImgVO">
+		SELECT c.customer_imgName
+		FROM wc_inquiryToAdmin i JOIN wc_customer_img c ON i.customer_no = c.customer_no
+		WHERE i.inquiry_parent = 0 AND i.inquiry_no = #{customer_no}
+	</select>
+	<!-- 로그 -->
+	<insert id="accessLog" parameterType="Map">
+		INSERT INTO wc_access_log(<if test="customer_nick != null">customer_nick,</if>aLog_ip,aLog_link) 
+		VALUES(<if test="customer_nick != null">#{customer_nick},</if>#{ip},#{link})
+	</insert>
+	<insert id="loginLog" parameterType="LoginLogVO">
+		INSERT INTO wc_login_log(<if test="loginLog_success == 'Y'">customer_no,</if>loginLog_success,loginLog_customerId,loginLog_ip<if test="loginLog_success == 'N'">,loginLog_reason</if>)
+		VALUES(<if test="loginLog_success == 'Y'">#{customer_no},</if>#{loginLog_success},#{loginLog_customerId},#{loginLog_ip}<if test="loginLog_success == 'N'">,#{loginLog_reason}</if>)
+	</insert>
+	<select id="customerLoginReason_email" parameterType="String" resultType="String">
+		select customer_email from wc_customer where customer_email=#{customer_email}
+	</select>
+	<select id="customerLoginReason_passwd" parameterType="String" resultType="String">
+		select customer_password from wc_customer where customer_email=#{customer_email}
+	</select>
+	<!-- 비밀번호 변경 로그 -->
+   <insert id="insertExPassword" parameterType="Map">
+      INSERT INTO wc_customer_log (customer_no, clog_description, ex_password, af_password, clog_ip, clog_date)
+      values(#{customer_no}, #{clog_description}, #{ex_password}, #{customer_password}, #{clog_ip}, now())
+   </insert>
+   <!-- 닉네임 변경 로그 -->
+   <insert id="insertExNick" parameterType="Map">
+      INSERT INTO wc_customer_log (customer_no, clog_description, ex_nick, af_nick, clog_ip, clog_date)
+      values(#{customer_no}, #{clog_description}, #{ex_nick}, #{customer_nick}, #{clog_ip}, now())
+   </insert>
+   <!-- 주말동안 방문자 숫자 -->
+   <select id="accessLogWeek" resultType="Map">
+   		SELECT COUNT(*) as count,DATE_FORMAT(aLog_date,'%y-%m-%d') AS aLog_date FROM wc_access_log 
+		WHERE DATE_FORMAT(aLog_date,'%y-%m-%d') BETWEEN '21-05-05' AND '21-05-11'
+		GROUP BY DATE_FORMAT(aLog_date,'%y-%m-%d')
+   </select>
+   <select id="sellerSoldPrice" resultType="Map">
+   	SELECT * FROM wc_seller s JOIN wc_customer c ON s.customer_no = c.customer_no ORDER BY seller_income DESC LIMIT 5
+   </select>
+   <!-- 멤버 정지 -->
+   <update id="memberSuspension">
+         UPDATE wc_customer set customer_grade = 4 where customer_no=#{customer_no}
+   </update>
+   <!-- 멤버 정지 해제 -->
+   <update id="memberUnSuspension">
+         UPDATE wc_customer set customer_grade = 1 where customer_no=#{customer_no}
+   </update>
+   <select id="accessLogList" parameterType="Map" resultType="AccessLogVO">
+   	SELECT * FROM wc_access_log 
+   	<if test="opt == 'nick'">WHERE customer_nick LIKE #{search} </if>
+	<if test="opt == 'link'">WHERE aLog_link LIKE #{search} </if>
+	ORDER BY aLog_no DESC
+	LIMIT #{page},30
+   </select>
+   <select id="accessLogCount" resultType="Integer" parameterType="Map">
+   	SELECT COUNT(*) FROM wc_access_log
+   	<if test="opt == 'nick'">WHERE customer_nick LIKE #{search} </if>
+	<if test="opt == 'link'">WHERE aLog_link LIKE #{search} </if>
+   </select>
+   <!-- 로그인로그 -->
+   <select id="loingLogList" parameterType="Map" resultType="LoginLogVO">
+   	SELECT * FROM wc_login_log ORDER BY loginLog_no DESC LIMIT #{page},10
+   </select>
+   <select id="loingLogListCount" parameterType="Map" resultType="Integer">
+   	SELECT COUNT(*) FROM wc_login_log 
+   </select>
+   <!-- 회원가입로그 -->
+   <select id="joinLogList" parameterType="Map" resultType="JoinLogVO">
+   	SELECT * FROM wc_join_log ORDER BY jlog_no DESC LIMIT #{page},10
+   </select>
+   <select id="joinLogListCount" parameterType="Map" resultType="Integer">
+   	SELECT COUNT(*) FROM wc_join_log 
+   </select>
+   <!-- 프로덕트 로그 -->
+   <select id="productLogList" parameterType="Map" resultType="ProductLogVO">
+   	SELECT * FROM wc_product_log ORDER BY plog_no DESC LIMIT #{page},10
+   </select>
+   <select id="productLogListCount" parameterType="Map" resultType="Integer">
+   	SELECT COUNT(*) FROM wc_product_log 
+   </select>
+   <!-- 판매자 로그 -->
+   <select id="sellerLogList" parameterType="Map" resultType="SellerLogVO">
+   	SELECT * FROM wc_seller_log ORDER BY slog_no DESC LIMIT #{page},10
+   </select>
+   <select id="sellerLogListCount" parameterType="Map" resultType="Integer">
+   	SELECT COUNT(*) FROM wc_seller_log 
+   </select>
+   <!-- 판매자 로그 -->
+   <select id="customerLogList" parameterType="Map" resultType="CustomerLogVO">
+   	SELECT * FROM wc_customer_log ORDER BY clog_no DESC LIMIT #{page},10
+   </select>
+   <select id="customerLogListCount" parameterType="Map" resultType="Integer">
+   	SELECT COUNT(*) FROM wc_customer_log 
+   </select>
+</mapper>

@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.wc.pb.seller.dao.SellerDAO">
+
+	<select id="InquiryTotalCountBySellerNo" parameterType="Map" resultType="Integer">
+		SELECT COUNT(*) as count from wc_inquiryToSeller where
+		seller_no=#{seller_no} AND inquiry_status=#{inquiry_status}
+		<if test="search_type=='inquiry_title' and search_word != null and search_word != '' ">
+			AND inquiry_title like CONCAT('%', #{search_word}, '%')
+		</if>
+		<if test="search_type=='inquiry_content' and search_word != null and search_word != '' ">
+			AND inquiry_content like CONCAT('%', #{search_word}, '%')
+		</if>
+	</select>
+	<!-- 판매자 문의함 리스트 -->
+	<select id="getInquiryList" resultType="com.wc.pb.seller.vo.InquiryToSellerVO">
+		SELECT * FROM wc_inquiryToSeller where seller_no=#{customer_no} and
+		inquiry_status=#{inquiry_status}
+		<if test="search_type=='inquiry_title' and search_word != null and search_word != '' ">
+			AND inquiry_title like CONCAT('%', #{search_word}, '%')
+		</if>
+		<if test="search_type=='inquiry_content' and search_word != null and search_word != '' ">
+			AND inquiry_content like CONCAT('%', #{search_word}, '%')
+		</if>
+		limit #{page}, 10
+	</select>
+
+	<select id="selectByProductNo" resultType="com.wc.pb.seller.vo.ProductVO">
+		SELECT * FROM wc_product WHERE product_no=#{product_no}
+	</select>
+
+	<select id="getInquiryContent"
+		resultType="com.wc.pb.seller.vo.InquiryToSellerVO">
+		SELECT * FROM wc_inquiryToSeller WHERE
+		inquiry_no=#{inquiry_no}
+	</select>
+
+	<insert id="replyInquiry" parameterType="com.wc.pb.seller.vo.InquiryToSellerVO">
+		INSERT INTO wc_inquiryToSeller(seller_no, customer_no,
+		product_no, inquiry_parent, inquiry_title, inquiry_content,
+		inquiry_date, inquiry_status)
+		VALUES (
+		#{seller_no},
+		#{customer_no},
+		#{product_no},
+		#{inquiry_no},
+		#{inquiry_title},
+		#{inquiry_content},
+		now(),
+		'R'
+		)
+	</insert>
+
+	<update id="updateStatus" parameterType="com.wc.pb.seller.vo.InquiryToSellerVO">
+		UPDATE wc_inquiryToSeller
+		SET inquiry_status ='Y',
+		inquiry_replyDateTime=now()
+		WHERE inquiry_no =
+		#{inquiry_no}
+	</update>
+
+
+	<!-- 현중 -->
+	<insert parameterType="Map" id="productWrite">
+		INSERT INTO wc_product
+		(seller_no, subCate_no, product_title, product_operationDate,
+		product_price, product_addDate)
+		VALUES ('2', '12', #{product_title},
+		#{product_operationDate}, #{product_price}, NOW());
+	</insert>
+
+	<select id="productWrite_detail" parameterType="Integer" resultType="Integer">
+		SELECT product_no from wc_product
+		ORDER BY product_no DESC
+		LIMIT 1
+	</select>
+
+	<insert id="productWrite_img" parameterType="Map">
+		INSERT INTO
+		wc_productImg(product_no, productOriFile_name, productImg_name,
+		productImg_location)
+		VALUES
+		(#{nboard_no},#{nboard_oriFileName},#{nboard_imgName},#{nboard_location})
+	</insert>
+
+	<select parameterType="ProductVO" id="productList" resultType="ProductVO">
+		SELECT product_no, product_title, product_price, seller_no
+		FROM wc_product
+		ORDER BY product_no DESC
+		LIMIT #{page}, 6
+	</select>
+
+	<select parameterType="ProductImgVO" id="productimgList" resultType="ProductImgVO">
+		SELECT *
+		FROM wc_productImg
+	</select>
+
+	<select parameterType="Integer" id="totalCount" resultType="Integer">
+		SELECT COUNT(*) as count FROM wc_product
+	</select>
+	<select parameterType="ProductVO" id="productDetail" resultType="ProductVO">
+		SELECT wc_product.product_no,wc_product.product_title,
+		wc_product.product_price, wc_seller.seller_location,
+		wc_seller.seller_major, wc_seller.customer_no,
+		wc_product.product_operationDate,wc_product.product_skill,
+		(SELECT
+		ROUND(AVG(r.review_rating),1) FROM wc_review r WHERE
+		wc_product.product_no = r.product_no) AS 'rating'
+		FROM wc_product LEFT
+		JOIN wc_seller ON wc_product.seller_no =
+		wc_seller.seller_no
+		WHERE
+		wc_product.product_no = #{bno}
+	</select>
+
+	<select parameterType="ProductImgVO" id="productDetail_img" resultType="ProductImgVO">
+		SELECT productImg_name
+		FROM wc_productImg
+		WHERE product_no =
+		#{bno}
+	</select>
+
+	<select parameterType="String" id="cumtomer_nick" resultType="String">
+		SELECT customer_nick
+		FROM wc_customer
+		WHERE customer_no =
+		${customer_no}
+	</select>
+	<select parameterType="SellerVO" id="sellerDetail" resultType="SellerVO">
+		SELECT *
+		FROM wc_seller
+		WHERE customer_no = ${customer_no}
+	</select>
+
+	<delete id="productDelete_img">
+		DELETE FROM wc_productImg WHERE product_no = #{bno}
+	</delete>
+
+	<delete id="productDelete">
+		DELETE FROM wc_product WHERE product_no = #{bno}
+	</delete>
+
+	<!-- 판매자 총 판매 금액 설정 -->
+	<update id="sellerIncome" parameterType="Map">
+		UPDATE wc_seller SET
+		seller_income = seller_income+#{orderPrice} WHERE seller_no =
+		#{seller_no}
+	</update>
+	<select id="customerIncome" parameterType="Integer" resultType="Integer">
+		SELECT seller_income FROM wc_seller WHERE customer_no =
+		#{customer_no}
+	</select>
+	<select id="soldCount" parameterType="Integer" resultType="Integer">
+		SELECT sum(product_soldCount) FROM wc_product p JOIN
+		wc_seller s ON p.seller_no = s.seller_no WHERE s.customer_no =
+		#{customer_no}
+	</select>
+	<select id="InquiryCount" parameterType="Integer" resultType="Integer">
+		SELECT COUNT(*) FROM wc_inquiryToSeller i JOIN wc_seller s
+		ON i.seller_no = s.seller_no WHERE s.customer_no = #{customer_no} AND inquiry_status='Y'
+	</select>
+	<!-- 판매자 승인 -> 셀러 인설트 -->
+	<insert id="insertSeller">
+		INSERT INTO wc_seller(customer_no)
+		values(#{customer_no})
+	</insert>
+	<insert id="withdrawMyIncome">
+		INSERT INTO wc_withdraw
+		(seller_no, withdraw_account,
+		withdraw_balanceBfWithdraw,
+		withdraw_balanceAfWithdraw,
+		withdraw_amount, withdraw_bankType,
+		withdraw_dateTime)
+		VALUES(
+		#{seller_no},
+		#{withdraw_account},
+		#{withdraw_balanceBfWithdraw},
+		#{withdraw_balanceAfWithdraw},
+		#{withdraw_amount},
+		#{withdraw_bankType},
+		now())
+	</insert>
+	<!-- 출금후 셀러 인포 수정 -->
+	<update id="updateSellerIncomeStatus">
+		UPDATE wc_seller set
+		seller_income=(seller_income-#{withdraw_amount}) where
+		seller_no =
+		#{seller_no}
+	</update>
+	<!-- 출금내역 by sno -->
+	<select id="selectWithdrawList"	resultType="com.wc.pb.seller.vo.WithdrawVO">
+		SELECT * from wc_withdraw where seller_no = #{seller_no}
+		<choose>
+			<when test="fromDate != null and toDate != null and fromDate != '' and toDate != ''">
+			 AND DATE_FORMAT(withdraw_dateTime, '%y-%m-%d')
+				 BETWEEN DATE_FORMAT(#{fromDate}, '%y-%m-%d') 
+				 AND DATE_FORMAT(#{toDate}, '%y-%m-%d')
+			</when>
+		</choose>
+		order by withdraw_no DESC LIMIT #{page},10
+	</select>
+	<!-- 오더리스트 출력하기 -->
+   <select id="buyerList" resultType="com.wc.pb.customer.vo.OrderVO" parameterType="Map">
+      select *
+      from wc_order WHERE seller_no = #{seller_no} 
+      <choose>
+			<when test="fromDate != null and toDate != null and fromDate != '' and toDate != ''">
+			 AND DATE_FORMAT(order_date, '%y-%m-%d')
+				 BETWEEN DATE_FORMAT(#{fromDate}, '%y-%m-%d') 
+				 AND DATE_FORMAT(#{toDate}, '%y-%m-%d')
+			</when>
+		</choose>
+      ORDER BY order_no DESC LIMIT #{page},10
+   </select>
+   <select id="sellDetailTotalCountBySellerNo" parameterType="Map" resultType="Integer">
+      SELECT COUNT(*) FROM wc_order WHERE seller_no = #{seller_no}
+      <choose>
+			<when test="fromDate != null and toDate != null and fromDate != '' and toDate != ''">
+			 AND DATE_FORMAT(order_date, '%y-%m-%d')
+				 BETWEEN DATE_FORMAT(#{fromDate}, '%y-%m-%d') 
+				 AND DATE_FORMAT(#{toDate}, '%y-%m-%d')
+			</when>
+		</choose>
+   </select>
+   <select id="selectWithdrawListCount" parameterType="Map" resultType="Integer">
+      SELECT COUNT(*) FROM wc_withdraw WHERE seller_no = #{seller_no}
+      <choose>
+			<when test="fromDate != null and toDate != null and fromDate != '' and toDate != ''">
+			 AND DATE_FORMAT(withdraw_dateTime, '%y-%m-%d')
+				 BETWEEN DATE_FORMAT(#{fromDate}, '%y-%m-%d') 
+				 AND DATE_FORMAT(#{toDate}, '%y-%m-%d')
+			</when>
+		</choose>
+   </select>
+   <!-- 셀러 인포 조회 by sno -->
+   <select id="selectSellerInfoBySno" resultType="com.wc.pb.seller.vo.SellerVO">
+      SELECT * from wc_seller where seller_no = #{seller_no}
+   </select>
+   <!-- 셀러 로그 인설트 -->
+   <insert id="insertSellerLog" parameterType="Map">
+      INSERT INTO wc_seller_log 
+      (seller_no, ex_location, af_location, ex_major, af_major, ex_info, af_info, slog_ip, slog_date)
+      VALUES
+      (#{seller_no}, #{ex_location}, #{seller_location}, #{ex_major}, #{seller_major}, #{ex_info}, #{seller_info}, #{slog_ip}, now())
+   </insert>
+   <!-- 셀러 인포 등록 -->
+   <update id="updateSellerInfo" parameterType="Map">
+     UPDATE wc_seller SET
+     seller_location=#{seller_location}, seller_major=#{seller_major}, seller_info=#{seller_info} 
+     WHERE customer_no = #{customer_no}
+   </update>
+
+</mapper>

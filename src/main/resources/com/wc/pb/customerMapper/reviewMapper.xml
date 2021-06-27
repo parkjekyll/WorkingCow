@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.wc.pb.customerMapper.reviewMapper">
+	<select id="reviewList" parameterType="Integer"  resultType="Map">
+	      SELECT r.*,c.customer_nick
+	      FROM wc_review r JOIN wc_customer c ON r.customer_no = c.customer_no
+	      WHERE r.product_no = #{value}
+	      ORDER BY r.review_no DESC
+	</select>
+	<select id="reviewCount" resultType="Integer">
+		SELECT count(*) as count
+		FROM wc_review where product_no = #{value}
+	</select>
+    <insert id="reviewWrite" parameterType="Map">
+        INSERT INTO
+        wc_review (review_rating, review_content, customer_no, review_writeDate, product_no)
+        VALUES(#{star},#{reviewContent},#{customer_no},now(), #{bno})
+    </insert>
+    <select id="getUserNo" parameterType="String" resultType="String">
+    	select customer_no from wc_customer where customer_nick = #{value}
+    </select>
+    <!-- 댓글삭제 -->
+    <delete id="deleteReview" parameterType="Map">
+		DELETE
+		FROM wc_review
+		WHERE review_no = #{review_no}    	
+    </delete>
+</mapper>
